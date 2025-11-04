@@ -54,8 +54,6 @@ extend {
             aggregate:
                 opportunity_secured_revenue
                 project_secured_revenue
-            where: 
-                is_latest_snapshot = true
             order_by: forecast_date asc
         }
         month_agg_correct_1 is {
@@ -63,8 +61,6 @@ extend {
             aggregate:
                 opportunity_secured_revenue
                 //project_secured_revenue
-            where: 
-                is_latest_snapshot = true
             order_by: forecast_date asc
         }
         month_agg_correct_2 is {
@@ -72,8 +68,6 @@ extend {
             aggregate:
                 //opportunity_secured_revenue
                 project_secured_revenue
-            where: 
-                is_latest_snapshot = true
             order_by: forecast_date asc
         }
 }
