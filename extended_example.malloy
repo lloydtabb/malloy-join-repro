@@ -1,6 +1,6 @@
 
 
-source: project is duckdb.table('./dim_project.csv')
+source: project is duckdb.table('./extended_example/dim_project.csv')
 extend {
     primary_key: pk
     dimension:
@@ -14,7 +14,7 @@ extend {
             pick 0 when project_remaining_days = 0
             else project_remaining_budget / project_remaining_days
 }
-source: opportunity is duckdb.table('./dim_opportunity.csv')
+source: opportunity is duckdb.table('./extended_example/dim_opportunity.csv')
 extend {
     primary_key: pk
     dimension:
@@ -29,7 +29,7 @@ extend {
 }
 
 
-source: revenue_forecast is duckdb.table('./dim_date_snapshot.csv')
+source: revenue_forecast is duckdb.table('./extended_example/dim_date_snapshot.csv')
 extend {
     dimension: 
         forecast_date is date_day::date
