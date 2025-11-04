@@ -1,0 +1,79 @@
+
+
+source: project is duckdb.table('./dim_project.csv')
+extend {
+    primary_key: pk
+    dimension:
+        #" Days remaining between the adjusted expected project start date and expected project end date
+        project_remaining_days is 
+            pick 0 when (days(project_start_date_adjusted to project_end_date) + 1) < 0
+            else (days(project_start_date_adjusted to project_end_date) + 1)
+        
+        #" Project budget amount divided by the remaining days provides an average amount of revenue to include in our forecast for each
+        project_remaining_budget_daily is 
+            pick 0 when project_remaining_days = 0
+            else project_remaining_budget / project_remaining_days
+}
+source: opportunity is duckdb.table('./dim_opportunity.csv')
+extend {
+    primary_key: pk
+    dimension:
+        #" Days remaining between the adjusted expected project start date and expected project end date
+        opportunity_remaining_days is 
+            pick 0 when (days(opportunity_expected_project_start_date_adjusted to opportunity_expected_project_end_date) + 1) < 0
+            else (days(opportunity_expected_project_start_date_adjusted to opportunity_expected_project_end_date) + 1)
+        #" Opportunity amount divided by the remaining days provides an average amount of revenue to include in our forecast for each day
+        opportunity_remaining_unweighted_amount_daily is 
+            pick 0 when opportunity_remaining_days = 0
+            else opportunity_amount / opportunity_remaining_days
+        #" Opportunity amount * likelihood, divided by the remaining days provides an average amount of revenue to include in our forecast for each day
+        opportunity_remaining_weighted_amount_daily is 
+            pick 0 when opportunity_remaining_days = 0
+            else (opportunity_amount * opportunity_likelihood) / opportunity_remaining_days
+    measure: 
+        opportunity_unweighted_amount is sum(opportunity_amount)
+        opportunity_weighted_amount is sum(opportunity_amount * opportunity_likelihood)
+    join_one: project on project_pk = project.pk
+}
+
+
+source: revenue_forecast is duckdb.table('./dim_date_snapshot.csv')
+extend {
+    dimension: 
+        forecast_date is date_day::date
+        forecast_month is date_day.month
+    measure:
+        project_secured_revenue is project.project_remaining_budget_daily.sum()
+        opportunity_secured_revenue is opportunity.opportunity_remaining_weighted_amount_daily.sum() {where: opportunity.project_pk is null}
+    join_many: 
+        project on (forecast_date ? project.project_start_date_adjusted to (project.project_end_date + 1 day)) 
+        opportunity on (forecast_date ? opportunity.opportunity_expected_project_start_date_adjusted to (opportunity.opportunity_expected_project_end_date + 1 day))
+    view:
+        month_agg_incorrect is {
+            group_by: forecast_date.month
+            aggregate:
+                opportunity_secured_revenue
+                project_secured_revenue
+            where: 
+                is_latest_snapshot = true
+            order_by: forecast_date asc
+        }
+        month_agg_correct_1 is {
+            group_by: forecast_date.month
+            aggregate:
+                opportunity_secured_revenue
+                //project_secured_revenue
+            where: 
+                is_latest_snapshot = true
+            order_by: forecast_date asc
+        }
+        month_agg_correct_2 is {
+            group_by: forecast_date.month
+            aggregate:
+                //opportunity_secured_revenue
+                project_secured_revenue
+            where: 
+                is_latest_snapshot = true
+            order_by: forecast_date asc
+        }
+}
