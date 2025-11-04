@@ -2,30 +2,35 @@
 
 source: project is duckdb.table('./simple_example/project.csv')
 extend {
-    primary_key: pk
+    // primary_key: pk
+    measure:
+         project_secured_revenue is project_remaining_budget_daily.sum()
 }
 source: opportunity is duckdb.table('./simple_example/opportunity.csv')
 extend {
-    primary_key: pk
+    // primary_key: pk
+measure:
+     opportunity_secured_revenue is opportunity_remaining_weighted_amount_daily.sum() {
+        where: project_pk is null
+    }
 }
 
 source: revenue_forecast is duckdb.table('./simple_example/dates.csv')
 extend {
     dimension: 
         forecast_date is date_day::date
-    measure:
-        project_secured_revenue is project.project_remaining_budget_daily.sum()
-        opportunity_secured_revenue is opportunity.opportunity_remaining_weighted_amount_daily.sum() {where: opportunity.project_pk is null}
-    join_many: 
+       
+    join_cross:
         project on (forecast_date ? project.project_start_date_adjusted to (project.project_end_date + 1 day)) 
+    join_cross:
         opportunity on (forecast_date ? opportunity.opportunity_expected_project_start_date_adjusted to (opportunity.opportunity_expected_project_end_date + 1 day))
     view:
         month_agg_incorrect is {
             group_by: forecast_date.month
             aggregate:
                 //Value for each is 1 (incorrect)
-                opportunity_secured_revenue
-                project_secured_revenue
+                opportunity.opportunity_secured_revenue
+                project.project_secured_revenue
             order_by: forecast_date
 
         }
@@ -33,14 +38,14 @@ extend {
             group_by: forecast_date.month
             aggregate:
                 //Value is 2
-                opportunity_secured_revenue
+                opportunity.opportunity_secured_revenue
             order_by: forecast_date
         }
         month_agg_correct_2 is {
             group_by: forecast_date.month
             aggregate:
                 //Value is 2
-                project_secured_revenue
+                project.project_secured_revenue
             order_by: forecast_date
         }
 }
