@@ -22,16 +22,11 @@ extend {
         opportunity_remaining_days is 
             pick 0 when (days(opportunity_expected_project_start_date_adjusted to opportunity_expected_project_end_date) + 1) < 0
             else (days(opportunity_expected_project_start_date_adjusted to opportunity_expected_project_end_date) + 1)
-        #" Opportunity amount divided by the remaining days provides an average amount of revenue to include in our forecast for each day
-        opportunity_remaining_unweighted_amount_daily is 
-            pick 0 when opportunity_remaining_days = 0
-            else opportunity_amount / opportunity_remaining_days
         #" Opportunity amount * likelihood, divided by the remaining days provides an average amount of revenue to include in our forecast for each day
         opportunity_remaining_weighted_amount_daily is 
             pick 0 when opportunity_remaining_days = 0
             else (opportunity_amount * opportunity_likelihood) / opportunity_remaining_days
     measure: 
-        opportunity_unweighted_amount is sum(opportunity_amount)
         opportunity_weighted_amount is sum(opportunity_amount * opportunity_likelihood)
     join_one: project on project_pk = project.pk
 }
@@ -41,7 +36,6 @@ source: revenue_forecast is duckdb.table('./dim_date_snapshot.csv')
 extend {
     dimension: 
         forecast_date is date_day::date
-        forecast_month is date_day.month
     measure:
         project_secured_revenue is project.project_remaining_budget_daily.sum()
         opportunity_secured_revenue is opportunity.opportunity_remaining_weighted_amount_daily.sum() {where: opportunity.project_pk is null}
