@@ -13,6 +13,8 @@ extend {
         project_remaining_budget_daily is 
             pick 0 when project_remaining_days = 0
             else project_remaining_budget / project_remaining_days
+        measure:
+            project_secured_revenue is project_remaining_budget_daily.sum()
 }
 source: opportunity is duckdb.table('./extended_example/dim_opportunity.csv')
 extend {
@@ -26,6 +28,9 @@ extend {
         opportunity_remaining_weighted_amount_daily is 
             pick 0 when opportunity_remaining_days = 0
             else (opportunity_amount * opportunity_likelihood) / opportunity_remaining_days
+            measure:
+     
+        opportunity_secured_revenue is opportunity_remaining_weighted_amount_daily.sum() {where: project_pk is null}
 }
 
 
@@ -33,34 +38,33 @@ source: revenue_forecast is duckdb.table('./extended_example/dim_date_snapshot.c
 extend {
     dimension: 
         forecast_date is date_day::date
-    measure:
-        project_secured_revenue is project.project_remaining_budget_daily.sum()
-        opportunity_secured_revenue is opportunity.opportunity_remaining_weighted_amount_daily.sum() {where: opportunity.project_pk is null}
-    join_many: 
+
+    join_cross: 
         project on (forecast_date ? project.project_start_date_adjusted to (project.project_end_date + 1 day)) 
+    join_cross:
         opportunity on (forecast_date ? opportunity.opportunity_expected_project_start_date_adjusted to (opportunity.opportunity_expected_project_end_date + 1 day))
     view:
         month_agg_incorrect is {
             group_by: forecast_date.month
             aggregate:
                 //$48,389 (should be $1,257,998)
-                opportunity_secured_revenue
+                opportunity.opportunity_secured_revenue
                 //$191,700 (should be $2,381,279)
-                project_secured_revenue
+                project.project_secured_revenue
             where: forecast_date.month = @2025-10
         }
         month_agg_correct_1 is {
             group_by: forecast_date.month
             aggregate:
                 //$1,257,998 which is correct
-                opportunity_secured_revenue
+                opportunity.opportunity_secured_revenue
             where: forecast_date.month = @2025-10
         }
         month_agg_correct_2 is {
             group_by: forecast_date.month
             aggregate:
                 //$2,381,279 which is correct
-                project_secured_revenue
+                project.project_secured_revenue
             where: forecast_date.month = @2025-10
         }
 }
