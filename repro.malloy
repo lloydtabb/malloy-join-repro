@@ -52,22 +52,24 @@ extend {
         month_agg_incorrect is {
             group_by: forecast_date.month
             aggregate:
+                //$48,389 (should be $1,257,998)
                 opportunity_secured_revenue
+                //$191,700 (should be $2,381,279)
                 project_secured_revenue
-            order_by: forecast_date asc
+            where: forecast_date.month = @2025-10
         }
         month_agg_correct_1 is {
             group_by: forecast_date.month
             aggregate:
+                //$1,257,998 which is correct
                 opportunity_secured_revenue
-                //project_secured_revenue
-            order_by: forecast_date asc
+            where: forecast_date.month = @2025-10
         }
         month_agg_correct_2 is {
             group_by: forecast_date.month
             aggregate:
-                //opportunity_secured_revenue
+                //$2,381,279 which is correct
                 project_secured_revenue
-            order_by: forecast_date asc
+            where: forecast_date.month = @2025-10
         }
 }
